@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+data/
+backups/
+reports-data/
+*.pem
+*.key
+service-account*.json
+.DS_Store

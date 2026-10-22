@@ -1,0 +1,148 @@
+/** Compact OpenAPI 3.0 description generated from a route table. Keep in sync with routes/ (a test checks every path exists). */
+type Auth = 'public' | 'user' | 'admin';
+interface Op { m: 'get' | 'post' | 'patch' | 'put' | 'delete'; p: string; s: string; tag: string; auth: Auth; body?: string; q?: string[]; status?: number }
+
+const O = (m: Op['m'], p: string, tag: string, s: string, auth: Auth = 'user', extra: Partial<Op> = {}): Op => ({ m, p, s, tag, auth, ...extra });
+const PAGE = ['page', 'pageSize'];
+
+export const OPERATIONS: Op[] = [
+  O('post', '/auth/login', 'Auth', 'Log in (sets an HTTP-only session cookie, returns a CSRF token)', 'public', { body: 'Login' }),
+  O('post', '/auth/logout', 'Auth', 'Log out and revoke the session', 'public', { status: 204 }),
+  O('get', '/auth/me', 'Auth', 'Current user and CSRF token', 'public'),
+  O('post', '/auth/change-password', 'Auth', 'Change own password', 'user', { body: 'ChangePassword', status: 204 }),
+  O('get', '/users/directory', 'Users', 'Active users (for assignment pickers)'),
+  O('get', '/users', 'Users', 'List users', 'admin'),
+  O('post', '/users', 'Users', 'Create a user (temporary password returned once)', 'admin', { body: 'NewUser', status: 201 }),
+  O('patch', '/users/{id}', 'Users', 'Update a user (role, active, notification prefs)', 'admin'),
+  O('post', '/users/{id}/reset-password', 'Users', 'Generate a new temporary password', 'admin'),
+  O('get', '/dashboard/summary', 'Dashboard', 'KPI summary for the selected period', 'user', { q: ['from', 'to', 'days'] }),
+  O('get', '/dashboard/websites', 'Dashboard', 'Per-website status + uptime table', 'user', { q: ['from', 'to', 'days'] }),
+  O('get', '/dashboard/sections', 'Dashboard', 'Cross-website analytics, SEO, performance, SSL and form data', 'user', { q: ['from', 'to', 'days'] }),
+  O('get', '/websites', 'Websites', 'List/filter/sort/paginate websites', 'user', { q: [...PAGE, 'q', 'state', 'criticality', 'hosting_type', 'environment', 'monitoring_status', 'ga4_status', 'gsc_status', 'sort', 'dir'] }),
+  O('post', '/websites', 'Websites', 'Create a website', 'admin', { body: 'Website', status: 201 }),
+  O('post', '/websites/import', 'Websites', 'Import websites from CSV/XLSX (mode=preview|commit)', 'admin', { q: ['mode', 'skipInvalid'] }),
+  O('get', '/websites/import-template', 'Websites', 'Download the 27-row XLSX import template'),
+  O('get', '/websites/export', 'Websites', 'Export inventory (format=csv|xlsx)', 'user', { q: ['format'] }),
+  O('post', '/websites/bulk', 'Websites', 'Bulk enable/disable/archive/delete/set criticality/interval', 'admin'),
+  O('get', '/websites/{id}', 'Websites', 'Website details'),
+  O('patch', '/websites/{id}', 'Websites', 'Update a website', 'admin', { body: 'Website' }),
+  O('delete', '/websites/{id}', 'Websites', 'Delete a website and its history', 'admin', { status: 204 }),
+  O('get', '/websites/{id}/checks', 'Monitoring', 'Raw check history', 'user', { q: [...PAGE, 'from', 'to', 'kind', 'failed'] }),
+  O('get', '/websites/{id}/uptime', 'Monitoring', 'Uptime + response time series and percentiles', 'user', { q: ['from', 'to', 'days'] }),
+  O('post', '/websites/{id}/check-now', 'Monitoring', 'Queue an immediate check (rate limited)', 'user', { status: 202 }),
+  O('get', '/websites/{id}/analytics', 'Integrations', 'GA4 daily snapshots + comparison', 'user', { q: ['from', 'to', 'days'] }),
+  O('get', '/websites/{id}/seo', 'Integrations', 'Search Console metrics + comparison', 'user', { q: ['from', 'to', 'days'] }),
+  O('get', '/websites/{id}/performance', 'Integrations', 'Performance audits + baseline comparison', 'user', { q: ['strategy', 'from', 'to'] }),
+  O('post', '/websites/{id}/performance/run', 'Integrations', 'Request a manual audit (throttled)', 'admin', { status: 202 }),
+  O('post', '/websites/{id}/performance/baseline', 'Integrations', 'Mark an audit as the baseline', 'admin', { status: 204 }),
+  O('get', '/websites/{id}/ssl', 'Monitoring', 'SSL certificate status and history'),
+  O('get', '/websites/{id}/form-checks', 'Monitoring', 'Form / checkout page checks'),
+  O('post', '/websites/{id}/form-checks', 'Monitoring', 'Add a form / checkout page check', 'admin', { status: 201 }),
+  O('patch', '/websites/{id}/form-checks/{fid}', 'Monitoring', 'Update a form check', 'admin'),
+  O('delete', '/websites/{id}/form-checks/{fid}', 'Monitoring', 'Delete a form check', 'admin', { status: 204 }),
+  O('get', '/websites/{id}/maintenance', 'Monitoring', 'Maintenance windows for the website'),
+  O('post', '/websites/{id}/maintenance', 'Monitoring', 'Create a maintenance window', 'admin', { status: 201 }),
+  O('delete', '/websites/{id}/maintenance/{mid}', 'Monitoring', 'Delete a maintenance window', 'admin', { status: 204 }),
+  O('get', '/maintenance', 'Monitoring', 'All maintenance windows'),
+  O('post', '/maintenance', 'Monitoring', 'Create a (global or per-site) maintenance window', 'admin', { status: 201 }),
+  O('delete', '/maintenance/{id}', 'Monitoring', 'Delete a maintenance window', 'admin', { status: 204 }),
+  O('get', '/incidents', 'Incidents', 'List incidents', 'user', { q: [...PAGE, 'website_id', 'severity', 'status', 'kind', 'assigned_to', 'from', 'to', 'open'] }),
+  O('get', '/incidents/{id}', 'Incidents', 'Incident with timeline and deliveries'),
+  O('post', '/incidents/{id}/acknowledge', 'Incidents', 'Acknowledge'),
+  O('post', '/incidents/{id}/investigate', 'Incidents', 'Mark as investigating'),
+  O('post', '/incidents/{id}/assign', 'Incidents', 'Assign to a user'),
+  O('post', '/incidents/{id}/notes', 'Incidents', 'Add a note to the timeline', 'user', { status: 201 }),
+  O('post', '/incidents/{id}/resolve', 'Incidents', 'Resolve manually'),
+  O('post', '/incidents/{id}/reopen', 'Incidents', 'Reopen a resolved incident'),
+  O('get', '/tasks', 'Tasks', 'List tasks', 'user', { q: [...PAGE, 'status', 'priority', 'website_id', 'incident_id', 'assigned_to', 'overdue'] }),
+  O('post', '/tasks', 'Tasks', 'Create a task', 'user', { body: 'Task', status: 201 }),
+  O('get', '/tasks/{id}', 'Tasks', 'Task with activity history'),
+  O('patch', '/tasks/{id}', 'Tasks', 'Update a task'),
+  O('delete', '/tasks/{id}', 'Tasks', 'Delete a task', 'admin', { status: 204 }),
+  O('post', '/tasks/{id}/comments', 'Tasks', 'Comment on a task', 'user', { status: 201 }),
+  O('get', '/escalation-rules', 'Tasks', 'List escalation rules'),
+  O('post', '/escalation-rules', 'Tasks', 'Create an escalation rule', 'admin', { status: 201 }),
+  O('patch', '/escalation-rules/{id}', 'Tasks', 'Update an escalation rule', 'admin'),
+  O('delete', '/escalation-rules/{id}', 'Tasks', 'Delete an escalation rule', 'admin', { status: 204 }),
+  O('get', '/notifications', 'Notifications', 'My notifications', 'user', { q: [...PAGE, 'unread', 'type'] }),
+  O('get', '/notifications/unread-count', 'Notifications', 'Unread count'),
+  O('post', '/notifications/read-all', 'Notifications', 'Mark all as read'),
+  O('patch', '/notifications/{id}/read', 'Notifications', 'Mark one as read'),
+  O('get', '/notifications/deliveries', 'Notifications', 'E-mail delivery log', 'admin', { q: PAGE }),
+  O('post', '/notifications/test-email', 'Notifications', 'Send a test e-mail', 'admin'),
+  O('get', '/settings', 'Settings', 'System settings (no secrets)'),
+  O('put', '/settings', 'Settings', 'Update system settings', 'admin'),
+  O('get', '/settings/me', 'Settings', 'My notification preferences'),
+  O('patch', '/settings/me', 'Settings', 'Update my notification preferences'),
+  O('post', '/reports', 'Reports', 'Request a PDF/XLSX report (generated in the background)', 'user', { body: 'Report', status: 202 }),
+  O('get', '/reports', 'Reports', 'List reports', 'user', { q: PAGE }),
+  O('get', '/reports/{id}', 'Reports', 'Report status/progress'),
+  O('get', '/reports/{id}/download', 'Reports', 'Download a finished report (authenticated)'),
+  O('get', '/integrations', 'Integrations', 'Integration status'),
+  O('post', '/integrations/ga4/test', 'Integrations', 'Test GA4 access', 'admin'),
+  O('post', '/integrations/search-console/test', 'Integrations', 'Test Search Console access', 'admin'),
+  O('get', '/integrations/search-console/sites', 'Integrations', 'Search Console properties visible to the service account', 'admin'),
+  O('patch', '/integrations/pagespeed', 'Integrations', 'Configure PageSpeed strategies', 'admin', { status: 204 }),
+  O('put', '/integrations/mapping/{websiteId}', 'Integrations', 'Map a website to GA4 / Search Console', 'admin'),
+  O('get', '/audit-logs', 'Audit', 'Audit log', 'admin', { q: [...PAGE, 'action', 'user_id', 'entity_type', 'from', 'to'] }),
+  O('get', '/system/health', 'System', 'System, worker and job health'),
+  O('get', '/system/jobs', 'System', 'Scheduled job runs', 'admin', { q: PAGE }),
+  O('get', '/health/live', 'System', 'Liveness probe', 'public'),
+  O('get', '/health/ready', 'System', 'Readiness probe (database)', 'public'),
+];
+
+export function buildOpenApi() {
+  const paths: Record<string, any> = {};
+  for (const op of OPERATIONS) {
+    const params = [
+      ...[...op.p.matchAll(/\{(\w+)\}/g)].map((m) => ({ name: m[1], in: 'path', required: true, schema: { type: 'string', format: 'uuid' } })),
+      ...(op.q ?? []).map((n) => ({ name: n, in: 'query', required: false, schema: { type: 'string' } })),
+    ];
+    (paths[op.p] ??= {})[op.m] = {
+      tags: [op.tag], summary: op.s, parameters: params,
+      security: op.auth === 'public' ? [] : [{ cookieAuth: [] }],
+      description: op.auth === 'admin' ? 'Administrator only.' : op.auth === 'user' ? 'Administrator or manager.' : undefined,
+      ...(op.body ? { requestBody: { required: true, content: { 'application/json': { schema: { $ref: `#/components/schemas/${op.body}` } } } } } : {}),
+      responses: {
+        [String(op.status ?? 200)]: { description: 'Success' },
+        ...(op.auth !== 'public' ? { '401': { $ref: '#/components/responses/Unauthorized' }, '403': { $ref: '#/components/responses/Forbidden' } } : {}),
+        '400': { $ref: '#/components/responses/ValidationError' },
+      },
+    };
+  }
+  const err = { type: 'object', properties: { error: { type: 'object', properties: { code: { type: 'string' }, message: { type: 'string' }, details: {} } } } };
+  return {
+    openapi: '3.0.3',
+    info: { title: 'Website Monitoring Dashboard API', version: '1.0.0', description: 'All state-changing requests (POST/PATCH/PUT/DELETE) must send the CSRF token from /auth/login or /auth/me in the `X-CSRF-Token` header.' },
+    servers: [{ url: '/api/v1' }],
+    tags: [...new Set(OPERATIONS.map((o) => o.tag))].map((name) => ({ name })),
+    paths,
+    components: {
+      securitySchemes: { cookieAuth: { type: 'apiKey', in: 'cookie', name: 'igo_session' } },
+      responses: {
+        Unauthorized: { description: 'Not authenticated', content: { 'application/json': { schema: err } } },
+        Forbidden: { description: 'Not permitted / CSRF failure', content: { 'application/json': { schema: err } } },
+        ValidationError: { description: 'Invalid input', content: { 'application/json': { schema: err } } },
+      },
+      schemas: {
+        Login: { type: 'object', required: ['email', 'password'], properties: { email: { type: 'string', format: 'email' }, password: { type: 'string' } } },
+        ChangePassword: { type: 'object', required: ['currentPassword', 'newPassword'], properties: { currentPassword: { type: 'string' }, newPassword: { type: 'string', minLength: 12 } } },
+        NewUser: { type: 'object', required: ['email', 'name', 'role'], properties: { email: { type: 'string', format: 'email' }, name: { type: 'string' }, role: { type: 'string', enum: ['admin', 'manager'] }, password: { type: 'string' } } },
+        Website: {
+          type: 'object', required: ['name', 'url'],
+          properties: {
+            name: { type: 'string' }, url: { type: 'string', format: 'uri' }, health_check_url: { type: 'string', nullable: true },
+            hosting_type: { type: 'string', enum: ['vps', 'docker', 'dokploy', 'managed', 'shared', 'cloud', 'other'] },
+            environment: { type: 'string', enum: ['production', 'staging', 'development'] }, owner: { type: 'string', nullable: true },
+            criticality: { type: 'string', enum: ['critical', 'high', 'medium', 'low'] }, monitoring_status: { type: 'string', enum: ['active', 'disabled', 'archived'] },
+            expected_status: { type: 'string', example: '200-399' }, check_interval_seconds: { type: 'integer', minimum: 60, default: 300 }, timeout_ms: { type: 'integer', default: 10000 },
+            max_redirects: { type: 'integer' }, fail_threshold: { type: 'integer', default: 2 }, recover_threshold: { type: 'integer', default: 2 },
+            ga4_property_id: { type: 'string', nullable: true }, gsc_property_url: { type: 'string', nullable: true }, notes: { type: 'string', nullable: true },
+          },
+        },
+        Task: { type: 'object', required: ['title'], properties: { title: { type: 'string' }, description: { type: 'string' }, website_id: { type: 'string', format: 'uuid' }, incident_id: { type: 'string', format: 'uuid' }, assigned_to: { type: 'string', format: 'uuid' }, priority: { type: 'string', enum: ['critical', 'high', 'medium', 'low'] }, due_at: { type: 'string', format: 'date-time' } } },
+        Report: { type: 'object', required: ['type', 'format'], properties: { type: { type: 'string', enum: ['daily', 'weekly', 'monthly', 'custom', 'website', 'incidents', 'traffic_seo', 'performance_ssl', 'tasks'] }, format: { type: 'string', enum: ['pdf', 'xlsx'] }, from: { type: 'string', format: 'date-time' }, to: { type: 'string', format: 'date-time' }, websiteId: { type: 'string', format: 'uuid' } } },
+      },
+    },
+  };
+}

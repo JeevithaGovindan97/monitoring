@@ -1,0 +1,118 @@
+# Website Monitoring Dashboard — Docker Compose for Dokploy (or plain `docker compose`).
+# Build context is the repository root; set the compose path to deploy/docker-compose.yml in Dokploy.
+# Only the `web` service needs a public domain. The database and API are on the internal network only.
+name: igo-monitoring
+
+x-server: &server
+  build: { context: .., dockerfile: docker/server.Dockerfile }
+  restart: unless-stopped
+  env_file: [{ path: ../.env, required: false }]
+  environment: &env
+    NODE_ENV: production
+    DATABASE_URL: postgres://${POSTGRES_USER:-monitor}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-monitor}
+    APP_BASE_URL: ${APP_BASE_URL:?set APP_BASE_URL to the public https URL}
+    TRUST_PROXY: ${TRUST_PROXY:-2}
+    LOG_LEVEL: ${LOG_LEVEL:-info}
+    SMTP_HOST: ${SMTP_HOST:-}
+    SMTP_PORT: ${SMTP_PORT:-587}
+    SMTP_SECURE: ${SMTP_SECURE:-false}
+    SMTP_USER: ${SMTP_USER:-}
+    SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+    SMTP_FROM: ${SMTP_FROM:-}
+    ALERT_RECIPIENTS: ${ALERT_RECIPIENTS:-}
+    GOOGLE_SERVICE_ACCOUNT_JSON: ${GOOGLE_SERVICE_ACCOUNT_JSON:-}
+    PAGESPEED_API_KEY: ${PAGESPEED_API_KEY:-}
+    ALLOW_PRIVATE_TARGETS: ${ALLOW_PRIVATE_TARGETS:-false}
+    CHECK_CONCURRENCY: ${CHECK_CONCURRENCY:-10}
+    BACKUP_ENABLED: ${BACKUP_ENABLED:-true}
+    BACKUP_HOUR_UTC: ${BACKUP_HOUR_UTC:-2}
+    BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    BACKUP_ENCRYPTION_PASSPHRASE: ${BACKUP_ENCRYPTION_PASSPHRASE:-}
+    BACKUP_UPLOAD_COMMAND: ${BACKUP_UPLOAD_COMMAND:-}
+  networks: [internal]
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+
+services:
+  db:
+    # Major version must match postgresql-client in docker/server.Dockerfile (pg_dump compatibility).
+    image: postgres:15-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-monitor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-monitor}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    deploy: { resources: { limits: { memory: 1g } } }
+
+  # One-shot: applies pending SQL migrations (advisory-locked, forward-only) then exits.
+  migrate:
+    <<: *server
+    command: ["node", "dist/migrate.js"]
+    restart: "no"
+    depends_on: { db: { condition: service_healthy } }
+
+  api:
+    <<: *server
+    command: ["node", "dist/server.js"]
+    depends_on:
+      db: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    volumes: [reports:/data/reports]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/api/v1/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy: { resources: { limits: { memory: 512m } } }
+
+  # Runs the scheduled HTTP / SSL / form checks, incident logic, e-mail delivery, integration syncs.
+  worker-monitor:
+    <<: *server
+    command: ["node", "dist/worker.js"]
+    environment: { <<: *env, WORKER_MODE: monitor, WORKER_NAME: worker-monitor }
+    depends_on:
+      db: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    deploy: { resources: { limits: { memory: 512m } } }
+
+  # Generates PDF/XLSX reports, retention cleanup, nightly backups.
+  worker-reports:
+    <<: *server
+    command: ["node", "dist/worker.js"]
+    environment: { <<: *env, WORKER_MODE: reports, WORKER_NAME: worker-reports }
+    depends_on:
+      db: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    volumes: [reports:/data/reports, backups:/data/backups]
+    deploy: { resources: { limits: { memory: 768m } } }
+
+  web:
+    build: { context: .., dockerfile: docker/web.Dockerfile }
+    restart: unless-stopped
+    depends_on: { api: { condition: service_healthy } }
+    networks: [internal, dokploy-network]
+    expose: ["8080"]
+    # Standalone use: uncomment to publish on the host (put your own HTTPS proxy in front).
+    # ports: ["8080:8080"]
+    security_opt: ["no-new-privileges:true"]
+    deploy: { resources: { limits: { memory: 128m } } }
+
+networks:
+  internal: {}
+  # Dokploy attaches routed services to this external network. For standalone use, create it once:
+  #   docker network create dokploy-network
+  dokploy-network: { external: true }
+
+volumes:
+  pgdata: {}
+  reports: {}
+  backups: {}

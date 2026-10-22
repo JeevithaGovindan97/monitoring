@@ -1,0 +1,11 @@
+process.env.NODE_ENV = 'test';
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL ?? 'postgres://monitor:monitor@localhost:5432/monitor_test';
+process.env.APP_BASE_URL = 'http://dashboard.test';
+process.env.LOG_LEVEL = 'silent';
+process.env.REPORTS_DIR = '/tmp/igo-test-reports';
+process.env.BACKUP_DIR = '/tmp/igo-test-backups';
+process.env.ALERT_RECIPIENTS = '';
+delete process.env.SMTP_HOST;
+delete process.env.SMTP_FROM;
+delete process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+delete process.env.GOOGLE_SERVICE_ACCOUNT_FILE;
