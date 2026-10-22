@@ -1,0 +1,29 @@
+# Netlify build settings for the web app (the React front end only).
+# Netlify cannot run the API, workers or PostgreSQL: /api/* must be proxied to a running backend.
+[build]
+  command = "npm install && npm run build --workspace web"
+  publish = "web/dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# --- API proxy: uncomment and set your backend's public HTTPS address ---
+# Must stay ABOVE the catch-all rule below.
+# [[redirects]]
+#   from = "/api/*"
+#   to = "https://YOUR-BACKEND-HOST/api/:splat"
+#   status = 200
+#   force = true
+
+# Single-page app: serve index.html for every other path (deep links, refresh).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
